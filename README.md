@@ -52,6 +52,15 @@ Not supported: Cleanroom 0.7+, Java 8 and the original ForgeGradle/Java 8 runtim
 
 ## Install
 
+Download the release build:
+
+```text
+https://github.com/Evsdrg/ThaumicJEI-Cleanroom/releases/tag/1.12.2-2.0.0-beta.2
+```
+
+The asset to install is `ThaumicJEI-Java25-1.12.2-2.0.0-beta.2.jar`. `SHA256SUMS` in the same
+release lists the expected checksums.
+
 1. Exit the game and back up your existing ThaumicJEI JAR and cache.
 2. Keep only one mod with modid `thaumicjei`; do not install JEI and HEI together.
 3. Install the remapped release JAR, not a `-dev`, `-sources` or differential variant.
