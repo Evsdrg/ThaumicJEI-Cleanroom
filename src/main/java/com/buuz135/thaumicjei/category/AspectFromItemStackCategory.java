@@ -90,17 +90,29 @@ public class AspectFromItemStackCategory implements IRecipeCategory<AspectFromIt
 
         private final AspectList aspect;
         private final List<ItemStack> stacks;
+        private final com.buuz135.thaumicjei.data.AspectSnapshot snapshot;
+        private final com.buuz135.thaumicjei.data.AspectSnapshot.Page page;
 
         public AspectFromItemStackWrapper(AspectList aspect, List<ItemStack> stacks) {
-            this.aspect = aspect;
-            this.stacks = stacks;
+            this.aspect = aspect.copy();
+            this.stacks = stacks.stream().map(ItemStack::copy).toList();
+            this.snapshot = null;
+            this.page = null;
         }
 
+        public AspectFromItemStackWrapper(com.buuz135.thaumicjei.data.AspectSnapshot snapshot,
+                                          com.buuz135.thaumicjei.data.AspectSnapshot.Page page) {
+            this.snapshot = snapshot;
+            this.page = page;
+            this.aspect = new AspectList().add(page.aspect(), 1);
+            this.stacks = List.of();
+        }
 
         @Override
         public void getIngredients(IIngredients ingredients) {
-            ingredients.setOutput(ThaumcraftJEIPlugin.ASPECT_LIST, aspect);
-            ingredients.setInputs(VanillaTypes.ITEM, stacks);
+            ingredients.setOutput(ThaumcraftJEIPlugin.ASPECT_LIST, aspect.copy());
+            ingredients.setInputs(VanillaTypes.ITEM, snapshot == null
+                    ? stacks.stream().map(ItemStack::copy).toList() : snapshot.sourceStacks(page));
         }
     }
 

@@ -36,7 +36,7 @@ public class ThaumicJEI {
 
     public static final String MOD_ID = "thaumicjei";
     public static final String MOD_NAME = "ThaumicJEI";
-    public static final String VERSION = "1.6.0";
+    public static final String VERSION = "2.0.0-beta.2";
     public static Logger LOGGER;
 
     /**
@@ -48,6 +48,7 @@ public class ThaumicJEI {
     @Mod.EventHandler
     public void onPre(FMLPreInitializationEvent event) {
         LOGGER = event.getModLog();
+        net.minecraftforge.client.ClientCommandHandler.instance.registerCommand(new com.buuz135.thaumicjei.cache.CacheCommand());
     }
 
 }

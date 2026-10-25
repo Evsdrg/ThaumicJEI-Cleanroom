@@ -1,8 +1,11 @@
 pluginManagement {
     repositories {
-        maven {
-            name 'MinecraftForge'
-            url 'https://maven.minecraftforge.net/'
-        }
+        gradlePluginPortal()
+        mavenCentral()
+        maven { url = 'https://maven.minecraftforge.net/' }
+        maven { url = 'https://maven.fabricmc.net/' }
+        maven { url = 'https://maven.arcseekers.com/releases' }
+        maven { url = 'https://maven.wagyourtail.xyz/releases' }
     }
 }
+rootProject.name = 'ThaumicJEI-Java25'

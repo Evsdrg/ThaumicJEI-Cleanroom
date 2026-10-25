@@ -32,28 +32,43 @@ import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
 public class ThaumicConfig {
 
     @Config.RequiresMcRestart
-    @Config.Comment("Allow the scanning of all items in game to show what items can make aspects. WARNING: This can be performance heavy but it won't add load time to the pack, everything is done in a new thread and it might take a while to appear in game!")
+    @Config.Comment("Enable snapshot-backed item aspect source pages and tooltips.")
     public static boolean enableAspectFromItemStacks = true;
 
     @Config.RequiresMcRestart
     @Config.Comment("Items blacklisted from the checking in the Aspect For ItemStack. Format: 'minecraft:stone'")
     public static String[] blacklistedFromAspectChecking = new String[]{};
 
-    @Config.Comment("If true the Aspect from ItemStack json will be created always on startup, if false if will be only be created if it doesn't exist")
-    public static boolean alwaysRecreateAspectFromItemStackFile = true;
+    @Config.Comment("Legacy option ignored. Existing caches are reused until /thaumicjei rebuild.")
+    public static boolean alwaysRecreateAspectFromItemStackFile = false;
 
-    @Config.Comment("Allow to render the ItemStacks aspects in all GUI")
+    @Config.Comment("Show snapshot-only aspect tooltips. Unknown items remain unknown and never trigger calculation.")
     public static boolean forceAspectTooltipInAllGUI = true;
 
     @Config.Comment("Hide recipes from JEI if you don't have the research for it")
     public static boolean hideRecipesIfMissingResearch = true;
 
+    @Config.Comment("Generate once only when no cache file exists. Existing caches are never automatically rebuilt or extended.")
+    public static boolean generateAspectCache = true;
+
+    @Config.RangeInt(min = 1, max = 10)
+    @Config.Comment("Maximum cooperative evaluator time per client tick in milliseconds. Third-party callbacks cannot be preempted.")
+    public static int generationBudgetMillis = 2;
+
+    @Config.RangeInt(min = 1, max = 50000)
+    public static int maxCachedItems = 20000;
+
+    @Config.RangeInt(min = 5, max = 1000)
+    @Config.Comment("Pause generation if a single continuation step exceeds this threshold in milliseconds.")
+    public static int slowCallbackMillis = 50;
+
     @Mod.EventBusSubscriber(modid = ThaumicJEI.MOD_ID)
-    private static class EventHandler {
+    public static class EventHandler {
         @SubscribeEvent
         public static void onConfigChanged(final ConfigChangedEvent.OnConfigChangedEvent event) {
             if (event.getModID().equals(ThaumicJEI.MOD_ID)) {
                 ConfigManager.sync(ThaumicJEI.MOD_ID, Config.Type.INSTANCE);
+                com.buuz135.thaumicjei.event.ResearchManager.requestRefresh();
             }
         }
     }

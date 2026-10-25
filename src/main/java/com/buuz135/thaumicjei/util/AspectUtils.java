@@ -32,16 +32,26 @@ import java.awt.*;
 public class AspectUtils {
 
     public static void renderAspectList(AspectList ingredient, int xPosition, int yPosition, Minecraft minecraft) {
+        if (ingredient == null || ingredient.size() == 0) return;
+        GL11.glPushAttrib(GL11.GL_ENABLE_BIT | GL11.GL_CURRENT_BIT);
         GL11.glPushMatrix();
-        minecraft.renderEngine.bindTexture(ingredient.getAspects()[0].getImage());
-        GL11.glEnable(3042);
-        Color c = new Color(ingredient.getAspects()[0].getColor());
-        GL11.glColor4f((float) c.getRed() / 255.0F, (float) c.getGreen() / 255.0F, (float) c.getBlue() / 255.0F, 1.0F);
-        Gui.drawModalRectWithCustomSizedTexture(xPosition, yPosition, 0, 0, 16, 16, 16, 16);
-        GL11.glColor4f(1F, 1F, 1F, 1F);
-        GL11.glScaled(0.5, 0.5, 0.5);
-        if (ingredient.getAmount(ingredient.getAspects()[0]) > 1)
-            minecraft.currentScreen.drawCenteredString(minecraft.fontRenderer, TextFormatting.WHITE + "" + ingredient.getAmount(ingredient.getAspects()[0]), (xPosition + 16) * 2, (yPosition + 12) * 2, 0);
-        GL11.glPopMatrix();
+        try {
+            var aspect = ingredient.getAspects()[0];
+            minecraft.renderEngine.bindTexture(aspect.getImage());
+            GL11.glEnable(GL11.GL_BLEND);
+            int color = aspect.getColor();
+            GL11.glColor4f(((color >> 16) & 255) / 255F, ((color >> 8) & 255) / 255F,
+                    (color & 255) / 255F, 1F);
+            Gui.drawModalRectWithCustomSizedTexture(xPosition, yPosition, 0, 0, 16, 16, 16, 16);
+            GL11.glColor4f(1F, 1F, 1F, 1F);
+            GL11.glScaled(0.5, 0.5, 0.5);
+            if (ingredient.getAmount(aspect) > 1 && minecraft.currentScreen != null)
+                minecraft.currentScreen.drawCenteredString(minecraft.fontRenderer,
+                        TextFormatting.WHITE + "" + ingredient.getAmount(aspect),
+                        (xPosition + 16) * 2, (yPosition + 12) * 2, 0);
+        } finally {
+            GL11.glPopMatrix();
+            GL11.glPopAttrib();
+        }
     }
 }
