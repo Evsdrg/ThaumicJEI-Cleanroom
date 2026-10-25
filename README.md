@@ -1,121 +1,101 @@
 # ThaumicJEI Cleanroom
 
-A Java 25 reimplementation of ThaumicJEI for **Minecraft 1.12.2 + Cleanroom 0.6.13-alpha**.
+A Java 25 refactor of ThaumicJEI for **Minecraft 1.12.2 + Cleanroom 0.6.13-alpha**.
 
-> ## Attribution
->
-> **This project is a code refactor based on [Buuz135/Thaumic-JEI](https://github.com/Buuz135/Thaumic-JEI).**
->
-> The original mod, its assets and its language files are by **Buuz135** and contributors, licensed under the MIT License (see `LICENSE`). This repository keeps the upstream Git history as its base, so the ancestry of every change is traceable. It is not affiliated with or endorsed by the original author.
->
-> What changed: the aspect-derivation engine was rewritten, the build migrated to Unimined + Cleanroom + a Java 25 toolchain, and the persistent cache was replaced with a fixed, write-once snapshot. The recipe categories, GUI textures and translations are the original work.
+It keeps the original recipe-browser features while moving item-aspect derivation off the JEI query
+and tooltip path. Aspects are derived once into an immutable snapshot, then reused read-only.
 
-Version: `1.12.2-2.0.0-beta.2`
+> **Attribution:** this is a code refactor based on
+> **[Buuz135/Thaumic-JEI](https://github.com/Buuz135/Thaumic-JEI)**, used under the MIT License.
+> Upstream Git history is retained as this repository's base. This project is not affiliated with or
+> endorsed by the original author. See [upstream and attribution](docs/upstream/README.md).
 
-## Why this exists
+![Aspect-source category](docs/images/aspect-sources.png)
 
-The original mod re-derives item aspects on demand from Thaumcraft's recipe graph. On large modpacks that derivation is expensive and runs on the client's render/query path, which produces single-core saturation and multi-second stalls when browsing JEI recipes, especially when pressing **R** or **U** on an item.
+<details>
+<summary>More screenshots</summary>
 
-This refactor keeps the visible behaviour but moves derivation off that path:
+![Infusion recipe](docs/images/infusion-recipe.png)
 
-- Derivation runs **once**, on a budgeted client-tick queue, never inside a JEI callback.
-- Tooltips and recipe lookups read an immutable in-memory snapshot only.
-- The result is persisted and reused read-only on every later launch.
+![Recipe lookup](docs/images/recipe-lookup.png)
 
-## Platform
+</details>
 
-| Component | Version |
+## Why use it
+
+On large modpacks, deriving aspects during JEI queries can saturate a core and stall the client,
+especially when pressing **R** or **U** on an item.
+
+This refactor instead provides:
+
+- **Snapshot-only lookups** — a tooltip or recipe query never starts aspect derivation.
+- **Budgeted generation** — the evaluator runs across client ticks with pause/cancel controls.
+- **A fixed cache** — generate once and reuse read-only; no startup fingerprinting, automatic
+  invalidation or unknown-item backfill.
+- **Safe replacement** — a new snapshot is published only after a complete generation and an atomic
+  file save. The previous cache survives cancellation or failure.
+
+The trade-off is intentional: displayed values can remain fixed across launches instead of being
+recomputed from every small change in Thaumcraft's own scan.
+
+## Requirements
+
+| Component | Supported version |
 |---|---|
 | Minecraft | 1.12.2 |
-| Loader | Cleanroom **0.6.13-alpha** (pinned) |
-| Java | **25** (class major 69, no preview features) |
+| Loader | Cleanroom **0.6.13-alpha** |
+| Java | **25** |
 | Thaumcraft | 6.1.BETA26 |
-| JEI | 4.16.1 / HEI 4.32.0+ |
+| JEI / HEI | JEI 4.16.1 or HEI 4.32.0+ |
 
-Not supported: Cleanroom 0.7+, Java 8, ForgeGradle-based Java 8 builds. The build file pins `cleanroom { loader '0.6.13-alpha' }`; do not bump it without re-validating the aspect semantics.
+Not supported: Cleanroom 0.7+, Java 8 and the original ForgeGradle/Java 8 runtime combination.
 
-## Cache behaviour: generate once, reuse forever
+## Install
 
-- With no `config/thaumicjei-cache-v2.json`, a complete cache is generated across a series of client ticks.
-- With a complete schema-2 file present, it is loaded directly. **No startup fingerprinting, no recipe comparison, no automatic invalidation, no backfill of unknown items, no automatic file rewrite.**
-- Tooltips and lookups are snapshot-only. An exact-NBT miss shows no extra aspects and never triggers computation.
-- Displayed values are accepted as fixed even when Thaumcraft's own scan would vary slightly between launches. The mod does not modify Thaumcraft's real decomposition rules and does not write to its global `objectTags`.
-- After adding/removing mods or changing recipes, *you* decide whether to run `/thaumicjei rebuild`.
-- An existing corrupt, incomplete or unsupported-schema file is reported, not silently overwritten or regenerated.
-- Items missing an aspect entry are skipped at load time; the rest of the cache stays usable.
+1. Exit the game and back up your existing ThaumicJEI JAR and cache.
+2. Keep only one mod with modid `thaumicjei`; do not install JEI and HEI together.
+3. Install the remapped release JAR, not a `-dev`, `-sources` or differential variant.
+4. On first launch without a cache, allow generation to finish. Later launches reuse the complete
+   `config/thaumicjei-cache-v2.json`.
 
-This is a deliberate trade: a stale-but-instant cache instead of a per-launch re-derivation.
+After pack or recipe changes, use `/thaumicjei rebuild` when you want to regenerate. See the
+[fixed-cache guide](docs/cache.md) for all commands and failure behaviour.
 
-## Commands
+## Documentation
 
-```text
-/thaumicjei status
-/thaumicjei pause
-/thaumicjei resume
-/thaumicjei cancel
-/thaumicjei rebuild
-```
+- [Architecture](docs/architecture.md) — packages, lookup/generation paths and source sets.
+- [Fixed cache](docs/cache.md) — lifecycle, commands, configuration and exact-NBT behaviour.
+- [Building](docs/building.md) — toolchain, artifacts and differential-variant precautions.
+- [Testing](docs/testing.md) — 44 unit tests, differential checks and validation limits.
+- [Changelog](CHANGELOG.md) — this refactor's release notes.
+- [Documentation index](docs/README.md) — including screenshot and asset-path conventions.
 
-`rebuild` captures a fresh recipe index and re-derives everything. During generation the old snapshot, the old source pages and the on-disk file all stay in place. Nothing partial is published and no partial checkpoint is written: a new snapshot is published only after every evaluation succeeds with zero skips, and the file is replaced by an atomic same-filesystem rename. Cancelling or failing keeps the previous cache. There is no resume from a cancelled generation.
-
-After a normal launch the evaluator is never constructed. The `generateAspectCache` config flag only controls **first-run automatic generation when no cache exists**; it does not disable manual rebuild. `alwaysRecreateAspectFromItemStackFile` is an ignored legacy field.
-
-## Implementation notes
-
-- Ordered recipe index, an explicit suspendable call stack, per-tick budget and cooldown. No virtual threads and no game callbacks moved to worker threads.
-- Preserves Thaumcraft's candidate priority, shared evaluation history, count scaling, truncation, container remainders and bonus aspects.
-- A dedicated IO thread only does file reads/writes and pure-data export; the immutable snapshot is published once via a volatile write.
-- Source pages update by content diff; unknown items are never cold-derived on the render or query thread.
-- Generation guards, pre-write validation, temp-file fsync and a commit lock prevent races between cancellation and the final rename.
-
-## Build
+## Build and test
 
 ```bash
-JAVA_HOME=/path/to/java25 bash gradlew \
+JAVA_HOME=/path/to/java25 ./gradlew \
   -Porg.gradle.java.installations.paths=/path/to/jdk8,/path/to/java25 build
 ```
 
-Gradle 9.7.0, Unimined 1.4.36-kappa, MCP stable 39-1.12. The isolated JDK 8 is used **only** by the legacy MCP tooling; it never compiles the mod or runs the game.
+JDK 8 is used only by legacy MCP tooling; the mod itself is compiled for Java 25. See
+[Building](docs/building.md) before producing a release artifact.
 
-The installable artifact is `build/libs/ThaumicJEI-Java25-1.12.2-2.0.0-beta.2.jar`. Do not install the `-dev`, `-sources` or test variants. A plain `build` produces only the formal artifact.
+## Validation status
 
-The differential test variant (`copyDifferential`) is a development-only harness that compares this evaluator against Thaumcraft's real `getObjectTags`. Its remapper reuses the same default output path, so after running it you must re-run `remapJar --rerun-tasks` and confirm the release JAR contains no `/testing/` classes before publishing.
+Verified on an independent 118-mod pack with 18,813 deduplicated items: complete generation with zero
+skips, warm cache loading without evaluator work, R/U lookups, source pages, safe rebuild/cancel and
+representative Thaumcraft recipe categories after research unlock.
 
-## Install and rollback
+This is not a claim of exhaustive coverage or GPU performance. The detailed list of tested and untested
+behaviour is in [Testing](docs/testing.md). Multiplayer is out of scope: the mod is client-side only
+and has no custom network protocol.
 
-Exit the game, back up your existing JAR and cache, and keep only one mod with modid `thaumicjei`. Do not run JEI and HEI side by side. Replace the JAR with the remapped release build. An existing complete v2 cache can be kept; the old `thaumicjei_itemstack_aspects.json` is never rewritten.
+## Contributing and license
 
-To roll back, exit the game, remove the new JAR and restore the original or an older build. Keep the original JAR and the old cache file separately.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for repository layout, build checks and submission hygiene.
 
-## Verified behaviour and known limits
+Released under the [MIT License](LICENSE), retaining the original `Copyright (c) 2017 Buuz135` notice.
+The upstream historical changelog is kept separately in
+[`docs/upstream/CHANGELOG.md`](docs/upstream/CHANGELOG.md).
 
-Verified on a real 118-mod pack (18,813 deduplicated items, 46 aspects, 22,702 source relations):
-
-- First-run generation completed with 0 skipped items.
-- Warm launches load the fixed cache directly with `steps=0` and the evaluator never started.
-- R/U lookups and the aspect-source category render correctly; cache hash and mtime unchanged after a full session.
-- `/thaumicjei rebuild` followed by `/thaumicjei cancel` leaves the old file byte-identical.
-- The evaluator matches Thaumcraft's own `getObjectTags` on 10/10 sampled targets (differential harness).
-
-Known limits, stated plainly:
-
-- Displayed aspects are not guaranteed to match each launch's Thaumcraft scan; this is intentional.
-- Unknown or missing items are skipped; there is no fuzzy NBT reuse.
-- The first generation without a cache can take several minutes. Slow third-party callbacks are not preemptible and pause the queue.
-- Not validated: every partial/unlock-undo research combination, real workbench auto-filling, infusion structure execution, dynamic per-mod recipe changes, and GPU frame-time percentiles. Testing used software rendering.
-
-Multiplayer is out of scope: this is a client-side-only mod with no custom network protocol.
-
-## License
-
-MIT, as the upstream project. Original copyright notice:
-
-```
-Copyright (c) 2017 Buuz135
-```
-
-See `LICENSE` for the full text. This refactor's modifications are released under the same license.
-
-## 中文说明
-
-本仓库是 [Buuz135/Thaumic-JEI](https://github.com/Buuz135/Thaumic-JEI) 的代码重构版本，保留上游 Git 历史作为基线，与原作者的立场无关。核心变化是把物品要素推导从 JEI 查询/渲染路径移出，改为首次生成、长期只读复用的固定缓存。固定目标是 Cleanroom 0.6.13-alpha + Java 25，不支持 0.7+ 与 Java 8 Forge。菜单命令、构建与回退方式见上文。
+[中文说明](README.zh-CN.md)
