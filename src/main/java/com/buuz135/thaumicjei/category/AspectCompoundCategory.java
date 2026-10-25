@@ -1,5 +1,5 @@
 /*
- * This file is part of Hot or Not.
+ * This file is part of ThaumicJEI.
  *
  * Copyright 2018, Buuz135
  *
@@ -104,7 +104,7 @@ public class AspectCompoundCategory implements IRecipeCategory<AspectCompoundCat
         @Override
         public void drawInfo(Minecraft minecraft, int recipeWidth, int recipeHeight, int mouseX, int mouseY) {
             GL11.glPushMatrix();
-            GL11.glEnable(3042);
+            GL11.glEnable(GL11.GL_BLEND);
             GL11.glScaled(0.5, 0.5, 0.5);
             String name = TextFormatting.DARK_GRAY + "" + aspect.getName();
             minecraft.fontRenderer.drawString(name, 181 - minecraft.fontRenderer.getStringWidth(name) / 2, 36, 0);
@@ -112,7 +112,7 @@ public class AspectCompoundCategory implements IRecipeCategory<AspectCompoundCat
             minecraft.fontRenderer.drawString(name, 32 - minecraft.fontRenderer.getStringWidth(name) / 2, 36, 0);
             name = TextFormatting.DARK_GRAY + "" + aspect.getComponents()[1].getName();
             minecraft.fontRenderer.drawString(name, 109 - minecraft.fontRenderer.getStringWidth(name) / 2, 36, 0);
-            GL11.glDisable(3042);
+            GL11.glDisable(GL11.GL_BLEND);
             GL11.glPopMatrix();
         }
     }

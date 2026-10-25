@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class AspectSnapshot {
+    public static final int SOURCES_PER_PAGE = 36;
     public record Amount(Aspect aspect, int amount) {
         public Amount {
             Objects.requireNonNull(aspect);
@@ -33,7 +34,10 @@ public final class AspectSnapshot {
         }
     }
     public record PageChanges(List<PageKey> removals, List<Page> additions) {
-        public PageChanges { removals = List.copyOf(removals); additions = List.copyOf(additions); }
+        public PageChanges {
+            removals = List.copyOf(removals);
+            additions = List.copyOf(additions);
+        }
     }
     public record Stats(int items, int relations, int aspects, long relationPayloadBytes) {}
     private record Range(int offset, int size) {}
@@ -88,16 +92,19 @@ public final class AspectSnapshot {
     public Page page(PageKey key) {
         var range = ranges.get(key.aspect());
         if (range == null) return null;
-        long offset = range.offset() + (long) key.index() * 36;
-        if (offset >= (long) range.offset() + range.size()) return null;
-        return new Page(key.aspect(), (int) offset, (int) Math.min(36, range.offset() + (long) range.size() - offset));    }
+        long offset = range.offset() + (long) key.index() * SOURCES_PER_PAGE;
+        long end = (long) range.offset() + range.size();
+        if (offset >= end) return null;
+        return new Page(key.aspect(), (int) offset, (int) Math.min(SOURCES_PER_PAGE, end - offset));
+    }
 
     public PageKey pageKey(Page page) {
         var range = checkedRange(page);
         int relative = page.offset() - range.offset();
-        var key = new PageKey(page.aspect(), relative / 36);
-        if (relative % 36 != 0 || !page(key).equals(page))
+        var key = new PageKey(page.aspect(), relative / SOURCES_PER_PAGE);
+        if (relative % SOURCES_PER_PAGE != 0 || !page(key).equals(page)) {
             throw new IllegalArgumentException("Page is not a snapshot boundary");
+        }
         return key;
     }
 
@@ -120,20 +127,23 @@ public final class AspectSnapshot {
 
     private static boolean sameSources(AspectSnapshot leftSnapshot, Page left, AspectSnapshot rightSnapshot, Page right) {
         if (left.size() != right.size()) return false;
-        for (int i = 0; i < left.size(); i++) {
-            int a = left.offset() + i, b = right.offset() + i;
-            if (leftSnapshot.sourceAmounts[a] != rightSnapshot.sourceAmounts[b]
-                    || !leftSnapshot.items.get(leftSnapshot.sourceItems[a]).identity()
-                    .equals(rightSnapshot.items.get(rightSnapshot.sourceItems[b]).identity())) return false;
+        for (int position = 0; position < left.size(); position++) {
+            int leftSource = left.offset() + position;
+            int rightSource = right.offset() + position;
+            var leftIdentity = leftSnapshot.items.get(leftSnapshot.sourceItems[leftSource]).identity();
+            var rightIdentity = rightSnapshot.items.get(rightSnapshot.sourceItems[rightSource]).identity();
+            if (leftSnapshot.sourceAmounts[leftSource] != rightSnapshot.sourceAmounts[rightSource]
+                    || !leftIdentity.equals(rightIdentity)) return false;
         }
         return true;
     }
 
     private Range checkedRange(Page page) {
         var range = ranges.get(page.aspect());
-        if (range == null || page.size() < 0 || page.size() > 36 || page.offset() < range.offset()
-                || (long) page.offset() + page.size() > (long) range.offset() + range.size())
+        if (range == null || page.size() < 0 || page.size() > SOURCES_PER_PAGE || page.offset() < range.offset()
+                || (long) page.offset() + page.size() > (long) range.offset() + range.size()) {
             throw new IllegalArgumentException("Source page does not belong to this snapshot");
+        }
         return range;
     }
 
@@ -199,8 +209,9 @@ public final class AspectSnapshot {
                     sourceItems[offset] = row.item();
                     sourceAmounts[offset++] = row.amount();
                 }
-                for (int start = offset - rows.size(); start < offset; start += 36)
-                    pages.add(new Page(entry.getKey(), start, Math.min(36, offset - start)));
+                for (int start = offset - rows.size(); start < offset; start += SOURCES_PER_PAGE) {
+                    pages.add(new Page(entry.getKey(), start, Math.min(SOURCES_PER_PAGE, offset - start)));
+                }
             }
             return new AspectSnapshot(items, ids, ranges, sourceItems, sourceAmounts, pages);
         }

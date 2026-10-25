@@ -44,11 +44,11 @@ class OrderedRecipeIndexTest {
                 int value = recipe.getRecipeOutput().getMetadata();
                 return (value == 32767 ? 0 : value) == target;
             }).toList();
-            var actual = index.candidates(new ItemStack(Items.APPLE, 1, meta), OrderedRecipeIndex.Kind.CRAFTING);
+            var actual = index.craftingCandidates(new ItemStack(Items.APPLE, 1, meta));
             assertEquals(expected, actual.stream().map(OrderedRecipeIndex.Candidate::recipe).toList());
         }
-        assertEquals(index.candidates(new ItemStack(Items.APPLE), OrderedRecipeIndex.Kind.CRAFTING),
-                index.candidates(new ItemStack(Items.APPLE, 1, 32767), OrderedRecipeIndex.Kind.CRAFTING));
+        assertEquals(index.craftingCandidates(new ItemStack(Items.APPLE)),
+                index.craftingCandidates(new ItemStack(Items.APPLE, 1, 32767)));
     }
 
     @Test
@@ -56,14 +56,14 @@ class OrderedRecipeIndexTest {
         var output = new ItemStack(Items.APPLE, 2);
         var recipe = new FakeRecipe(output);
         var index = OrderedRecipeIndex.from(List.of(recipe), List.of());
-        var candidates = index.candidates(output, OrderedRecipeIndex.Kind.CRAFTING);
+        var candidates = index.craftingCandidates(output);
         output.setCount(9);
         assertEquals(2, candidates.getFirst().output().getCount());
         candidates.getFirst().output().setCount(33);
         assertEquals(2, candidates.getFirst().output().getCount());
         assertThrows(UnsupportedOperationException.class, candidates::clear);
-        assertTrue(index.candidates(new ItemStack(Items.CARROT), OrderedRecipeIndex.Kind.CRAFTING).isEmpty());
-        assertTrue(index.candidates(ItemStack.EMPTY, OrderedRecipeIndex.Kind.CRAFTING).isEmpty());
+        assertTrue(index.craftingCandidates(new ItemStack(Items.CARROT)).isEmpty());
+        assertTrue(index.craftingCandidates(ItemStack.EMPTY).isEmpty());
     }
 
     @Test
@@ -77,19 +77,20 @@ class OrderedRecipeIndexTest {
         var index = OrderedRecipeIndex.from(List.of(), List.of(wildcard, exact, infusion));
         assertEquals(List.of(wildcard, exact), index.crucibleRecipes());
         assertEquals(List.of(infusion), index.infusionRecipes());
-        assertSame(exact, index.candidates(new ItemStack(Items.APPLE), OrderedRecipeIndex.Kind.CRUCIBLE).getFirst().recipe());
-        assertSame(wildcard, index.candidates(new ItemStack(Items.APPLE, 1, 32767), OrderedRecipeIndex.Kind.CRUCIBLE).getFirst().recipe());
-        assertSame(infusion, index.candidates(new ItemStack(Items.APPLE), OrderedRecipeIndex.Kind.INFUSION).getFirst().recipe());
+        assertSame(exact, index.crucibleCandidates(new ItemStack(Items.APPLE)).getFirst().recipe());
+        assertSame(wildcard, index.crucibleCandidates(new ItemStack(Items.APPLE, 1, 32767)).getFirst().recipe());
+        assertSame(infusion, index.infusionCandidates(new ItemStack(Items.APPLE)).getFirst().recipe());
         assertThrows(UnsupportedOperationException.class, () -> index.crucibleRecipes().clear());
     }
 
     @Test
     void badOutputDoesNotDiscardOtherCandidates() {
-        var broken = new FakeRecipe(ItemStack.EMPTY); broken.fail = true;
+        var broken = new FakeRecipe(ItemStack.EMPTY);
+        broken.fail = true;
         var valid = new FakeRecipe(new ItemStack(Items.APPLE));
         var index = OrderedRecipeIndex.from(java.util.Arrays.asList(broken, null, new FakeRecipe(null), valid), List.of());
         assertEquals(1, index.unsupportedCount());
-        assertSame(valid, index.candidates(new ItemStack(Items.APPLE), OrderedRecipeIndex.Kind.CRAFTING).getFirst().recipe());
-        assertEquals(3, index.candidates(new ItemStack(Items.APPLE), OrderedRecipeIndex.Kind.CRAFTING).getFirst().ordinal());
+        assertSame(valid, index.craftingCandidates(new ItemStack(Items.APPLE)).getFirst().recipe());
+        assertEquals(3, index.craftingCandidates(new ItemStack(Items.APPLE)).getFirst().ordinal());
     }
 }

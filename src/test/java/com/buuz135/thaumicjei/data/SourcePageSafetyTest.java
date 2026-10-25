@@ -31,7 +31,9 @@ class SourcePageSafetyTest {
         var stacks = new ItemStack[40];
         for (int i = 0; i < stacks.length; i++) {
             stacks[i] = new ItemStack(Items.APPLE);
-            var nbt = new net.minecraft.nbt.NBTTagCompound(); nbt.setInteger("testId", i); stacks[i].setTagCompound(nbt);
+            var nbt = new net.minecraft.nbt.NBTTagCompound();
+            nbt.setInteger("testId", i);
+            stacks[i].setTagCompound(nbt);
         }
         var previous = sources(stacks, 100);
         var next = sources(stacks, 101);

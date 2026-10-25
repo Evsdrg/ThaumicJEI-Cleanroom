@@ -59,6 +59,26 @@ class SnapshotStoreTest {
     }
 
     @Test
+    void invalidReasonsDescribeValidationWithoutEchoingInput(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("snapshot.json");
+        Files.writeString(file, "{\"schema\":2,\"items\":[]}");
+        assertEquals("Missing cache contents or completion flag",
+                assertInstanceOf(SnapshotStore.Invalid.class, SnapshotStore.read(file)).reason());
+        Files.writeString(file, "{\"schema\":2,\"complete\":true,\"items\":[],\"complete\":false}");
+        assertEquals("Duplicate document field",
+                assertInstanceOf(SnapshotStore.Invalid.class, SnapshotStore.read(file)).reason());
+    }
+
+    @Test
+    void schemaTwoRecipeSignaturesRemainReadableForFixedImports(@TempDir Path directory) throws Exception {
+        var file = directory.resolve("snapshot.json");
+        var document = new SnapshotStore.Document("previous-policy", List.of(), true,
+                List.of(new SnapshotStore.StoredRecipe("test:old", "minecraft:apple", "a".repeat(64))));
+        SnapshotStore.write(file, document);
+        assertEquals(document, assertInstanceOf(SnapshotStore.Hit.class, SnapshotStore.read(file)).document());
+    }
+
+    @Test
     void cancellationBeforeRenamePreservesPreviousDocument(@TempDir Path directory) throws Exception {
         var file = directory.resolve("snapshot.json");
         var previous = new SnapshotStore.Document("previous", List.of(

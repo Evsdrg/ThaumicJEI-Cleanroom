@@ -1,5 +1,5 @@
 /*
- * This file is part of Hot or Not.
+ * This file is part of ThaumicJEI.
  *
  * Copyright 2018, Buuz135
  *
@@ -109,9 +109,9 @@ public class CrucibleCategory implements IRecipeCategory<CrucibleCategory.Crucib
     @Override
     public void drawExtras(Minecraft minecraft) {
         minecraft.renderEngine.bindTexture(new ResourceLocation("thaumcraft", "textures/gui/gui_researchbook_overlay.png"));
-        GL11.glEnable(3042);
+        GL11.glEnable(GL11.GL_BLEND);
         Gui.drawModalRectWithCustomSizedTexture(16, 6, 199, 168, 26, 26, 512, 512);
-        GL11.glDisable(3042);
+        GL11.glDisable(GL11.GL_BLEND);
     }
 
     public static class CrucibleWrapper implements IHasResearch, IRecipeWrapper {

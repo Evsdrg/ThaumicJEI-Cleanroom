@@ -22,7 +22,9 @@ class SnapshotDifferentialTest {
             var expected = new int[64][aspects.length];
             for (int i = 0; i < stacks.length; i++) {
                 stacks[i] = new ItemStack(Items.APPLE);
-                var nbt = new NBTTagCompound(); nbt.setInteger("id", i); stacks[i].setTagCompound(nbt);
+                var nbt = new NBTTagCompound();
+                nbt.setInteger("id", i);
+                stacks[i].setTagCompound(nbt);
             }
             for (int operation = 0; operation < 500; operation++) {
                 int item = random.nextInt(stacks.length), aspect = random.nextInt(aspects.length), amount = random.nextInt(500) + 1;

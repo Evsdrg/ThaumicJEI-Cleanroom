@@ -1,5 +1,5 @@
 /*
- * This file is part of Hot or Not.
+ * This file is part of ThaumicJEI.
  *
  * Copyright 2018, Buuz135
  *
@@ -23,6 +23,7 @@ package com.buuz135.thaumicjei.category;
 
 import com.buuz135.thaumicjei.ThaumcraftJEIPlugin;
 import com.buuz135.thaumicjei.ThaumicJEI;
+import com.buuz135.thaumicjei.data.AspectSnapshot;
 import com.buuz135.thaumicjei.drawable.AlphaDrawable;
 import com.buuz135.thaumicjei.ingredient.AspectIngredientRender;
 import mezz.jei.api.gui.IDrawable;
@@ -68,9 +69,9 @@ public class AspectFromItemStackCategory implements IRecipeCategory<AspectFromIt
     @Override
     public void drawExtras(Minecraft minecraft) {
         minecraft.renderEngine.bindTexture(new ResourceLocation(ThaumicJEI.MOD_ID, "textures/gui/gui.png"));
-        GL11.glEnable(3042);
+        GL11.glEnable(GL11.GL_BLEND);
         Gui.drawModalRectWithCustomSizedTexture(-66 + 81 - 9, 31, 0, 0, 163, 74, 256, 256);
-        GL11.glDisable(3042);
+        GL11.glDisable(GL11.GL_BLEND);
     }
 
     @Override
@@ -89,30 +90,19 @@ public class AspectFromItemStackCategory implements IRecipeCategory<AspectFromIt
     public static class AspectFromItemStackWrapper implements IRecipeWrapper {
 
         private final AspectList aspect;
-        private final List<ItemStack> stacks;
-        private final com.buuz135.thaumicjei.data.AspectSnapshot snapshot;
-        private final com.buuz135.thaumicjei.data.AspectSnapshot.Page page;
+        private final AspectSnapshot snapshot;
+        private final AspectSnapshot.Page page;
 
-        public AspectFromItemStackWrapper(AspectList aspect, List<ItemStack> stacks) {
-            this.aspect = aspect.copy();
-            this.stacks = stacks.stream().map(ItemStack::copy).toList();
-            this.snapshot = null;
-            this.page = null;
-        }
-
-        public AspectFromItemStackWrapper(com.buuz135.thaumicjei.data.AspectSnapshot snapshot,
-                                          com.buuz135.thaumicjei.data.AspectSnapshot.Page page) {
+        public AspectFromItemStackWrapper(AspectSnapshot snapshot, AspectSnapshot.Page page) {
             this.snapshot = snapshot;
             this.page = page;
             this.aspect = new AspectList().add(page.aspect(), 1);
-            this.stacks = List.of();
         }
 
         @Override
         public void getIngredients(IIngredients ingredients) {
             ingredients.setOutput(ThaumcraftJEIPlugin.ASPECT_LIST, aspect.copy());
-            ingredients.setInputs(VanillaTypes.ITEM, snapshot == null
-                    ? stacks.stream().map(ItemStack::copy).toList() : snapshot.sourceStacks(page));
+            ingredients.setInputs(VanillaTypes.ITEM, snapshot.sourceStacks(page));
         }
     }
 

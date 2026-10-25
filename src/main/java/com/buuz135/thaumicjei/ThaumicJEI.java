@@ -1,5 +1,5 @@
 /*
- * This file is part of Hot or Not.
+ * This file is part of ThaumicJEI.
  *
  * Copyright 2018, Buuz135
  *
@@ -36,7 +36,7 @@ public class ThaumicJEI {
 
     public static final String MOD_ID = "thaumicjei";
     public static final String MOD_NAME = "ThaumicJEI";
-    public static final String VERSION = "2.0.0-beta.2";
+    public static final String VERSION = "2.0.0-beta.3";
     public static Logger LOGGER;
 
     /**

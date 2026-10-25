@@ -1,5 +1,6 @@
 package com.buuz135.thaumicjei.testing;
 
+import com.buuz135.thaumicjei.ThaumcraftJEIPlugin;
 import com.buuz135.thaumicjei.cache.GenerationManager;
 import com.buuz135.thaumicjei.data.AspectSnapshot;
 import com.buuz135.thaumicjei.ingredient.CachedItemAspects;
@@ -45,22 +46,24 @@ public final class DifferentialProbe {
         if (finished || event.phase != TickEvent.Phase.END || !Boolean.getBoolean("thaumicjei.differential")) return;
         if (++ticks < 20) return;
         ticks = 0;
-        if (!GenerationManager.status().startsWith("ready")) return;
+        if (!GenerationManager.status().isReady()) return;
         finished = true;
         var configured = System.getProperty("thaumicjei.differential.output");
         var output = configured == null ? Loader.instance().getConfigDir().toPath().resolve("thaumicjei-differential.txt")
                 : Path.of(configured);
-        try { verify(output); }
-        catch (Throwable throwable) {
-            try { Files.writeString(output, "VERIFY_FAILURE " + throwable + "\n", StandardCharsets.UTF_8); }
-            catch (Exception exception) { exception.printStackTrace(); }
+        try {
+            verify(output);
+        } catch (Throwable throwable) {
+            try {
+                Files.writeString(output, "VERIFY_FAILURE " + throwable + "\n", StandardCharsets.UTF_8);
+            } catch (Exception exception) {
+                exception.printStackTrace();
+            }
         }
     }
 
-    @SuppressWarnings("unchecked")
     private static void verify(Path output) throws Exception {
-        var field = GenerationManager.class.getDeclaredField("seeds"); field.setAccessible(true);
-        var seeds = (List<ItemStack>) field.get(null);
+        var seeds = ThaumcraftJEIPlugin.registeredItemStacks();
         var backup = new HashMap<Integer, AspectList>();
         CommonInternals.objectTags.forEach((key, value) -> backup.put(key, value.copy()));
         var snapshot = CachedItemAspects.view().snapshot();
@@ -69,10 +72,21 @@ public final class DifferentialProbe {
         try {
             for (var target : TARGETS) {
                 ItemStack stack = null;
-                for (var seed : seeds) if (target.equals(String.valueOf(seed.getItem().getRegistryName()))) { stack = seed; break; }
-                if (stack == null) { lines.add("MISSING " + target); missing++; continue; }
+                for (var seed : seeds) {
+                    if (target.equals(String.valueOf(seed.getItem().getRegistryName()))) {
+                        stack = seed;
+                        break;
+                    }
+                }
+                if (stack == null) {
+                    lines.add("MISSING " + target);
+                    missing++;
+                    continue;
+                }
                 if (!(snapshot.lookup(stack) instanceof AspectSnapshot.Known(var amounts))) {
-                    lines.add("UNKNOWN " + target); mismatches++; continue;
+                    lines.add("UNKNOWN " + target);
+                    mismatches++;
+                    continue;
                 }
                 var expected = new TreeMap<String, Integer>();
                 for (var amount : amounts) expected.put(amount.aspect().getTag(), amount.amount());
@@ -86,7 +100,8 @@ public final class DifferentialProbe {
                         + " expected=" + expected + " original=" + actual);
             }
         } finally {
-            CommonInternals.objectTags.clear(); CommonInternals.objectTags.putAll(backup);
+            CommonInternals.objectTags.clear();
+            CommonInternals.objectTags.putAll(backup);
         }
         lines.add("SUMMARY compared=" + compared + " missing=" + missing + " mismatches=" + mismatches
                 + " result=" + (compared == TARGETS.size() && missing == 0 && mismatches == 0 ? "PASS" : "FAIL"));

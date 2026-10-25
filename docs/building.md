@@ -32,7 +32,7 @@ For an offline build with a populated Gradle cache, add `--offline`.
 The installable file is:
 
 ```text
-build/libs/ThaumicJEI-Java25-1.12.2-2.0.0-beta.2.jar
+build/libs/ThaumicJEI-Java25-1.12.2-2.0.0-beta.3.jar
 ```
 
 Do not install `-dev`, `-sources` or differential variants. The release JAR must not contain
@@ -41,7 +41,7 @@ Do not install `-dev`, `-sources` or differential variants. The release JAR must
 A quick local check:
 
 ```bash
-unzip -l build/libs/ThaumicJEI-Java25-1.12.2-2.0.0-beta.2.jar | grep '/testing/' || true
+unzip -l build/libs/ThaumicJEI-Java25-1.12.2-2.0.0-beta.3.jar | grep '/testing/' || true
 ```
 
 No output is the expected result.

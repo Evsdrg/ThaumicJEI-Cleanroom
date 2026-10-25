@@ -1,6 +1,5 @@
 package com.buuz135.thaumicjei.ingredient;
 
-import com.buuz135.thaumicjei.ThaumcraftJEIPlugin;
 import com.buuz135.thaumicjei.ThaumicJEI;
 import com.buuz135.thaumicjei.category.AspectFromItemStackCategory;
 import com.buuz135.thaumicjei.data.AspectSnapshot;
@@ -12,7 +11,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import thaumcraft.api.aspects.Aspect;
 
-import java.lang.management.ManagementFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +33,10 @@ class SourceViewTest {
         var ingredients = (mezz.jei.api.ingredients.IIngredients) java.lang.reflect.Proxy.newProxyInstance(
                 getClass().getClassLoader(), new Class<?>[]{mezz.jei.api.ingredients.IIngredients.class},
                 (proxy, method, args) -> {
-                    if (method.getName().equals("setInputs") && args[0] == mezz.jei.api.ingredients.VanillaTypes.ITEM)
-                        captured.set((List<ItemStack>) args[1]);
+                    if (method.getName().equals("setInputs") && args[0] == mezz.jei.api.ingredients.VanillaTypes.ITEM) {
+                        var stacks = ((List<?>) args[1]).stream().map(ItemStack.class::cast).toList();
+                        captured.set(stacks);
+                    }
                     return null;
                 });
         wrapper.getIngredients(ingredients);
@@ -55,7 +55,9 @@ class SourceViewTest {
         long start = System.nanoTime();
         for (int i = 0; i < items; i++) {
             var stack = new ItemStack(Items.APPLE);
-            var tag = new net.minecraft.nbt.NBTTagCompound(); tag.setInteger("variant", i); stack.setTagCompound(tag);
+            var tag = new net.minecraft.nbt.NBTTagCompound();
+            tag.setInteger("variant", i);
+            stack.setTagCompound(tag);
             for (var aspect : aspects) builder.add(stack, aspect, i % 500 + 1);
             reference.add(Map.entry(stack, i % 500 + 1));
         }

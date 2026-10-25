@@ -3,7 +3,7 @@ plugins {
     id 'xyz.wagyourtail.unimined' version '1.4.36-kappa'
 }
 
-version = '1.12.2-2.0.0-beta.2'
+version = '1.12.2-2.0.0-beta.3'
 group = 'com.buuz135.thaumicjei'
 base { archivesName = 'ThaumicJEI-Java25' }
 

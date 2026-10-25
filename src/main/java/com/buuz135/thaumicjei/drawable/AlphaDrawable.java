@@ -1,5 +1,5 @@
 /*
- * This file is part of Hot or Not.
+ * This file is part of ThaumicJEI.
  *
  * Copyright 2018, Buuz135
  *
@@ -79,7 +79,7 @@ public class AlphaDrawable implements IDrawableStatic {
     @Override
     public void draw(Minecraft minecraft, int xOffset, int yOffset, int maskTop, int maskBottom, int maskLeft, int maskRight) {
         minecraft.getTextureManager().bindTexture(this.resourceLocation);
-        GL11.glEnable(3042);
+        GL11.glEnable(GL11.GL_BLEND);
         int x = xOffset + this.paddingLeft + maskLeft;
         int y = yOffset + this.paddingTop + maskTop;
         int u = this.u + maskLeft;
@@ -87,7 +87,7 @@ public class AlphaDrawable implements IDrawableStatic {
         int width = this.width - maskRight - maskLeft;
         int height = this.height - maskBottom - maskTop;
         Gui.drawModalRectWithCustomSizedTexture(x, y, u, v, width, height, 512, 512);
-        GL11.glDisable(3042);
+        GL11.glDisable(GL11.GL_BLEND);
     }
 
 }

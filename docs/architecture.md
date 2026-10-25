@@ -47,12 +47,30 @@ JEI runtime attached
                                       -> publish snapshot
 ```
 
-`GenerationManager` owns the lifecycle. `AspectEvaluator` can stop between frames, so a large recipe
-graph does not have to finish inside one tick. Slow third-party callbacks are not preemptible; the
-manager pauses instead of pretending they can be interrupted safely.
+`GenerationManager` is the Forge event/command facade. A package-private `CacheGeneration` instance owns
+one cache lifecycle, its IO tasks and source-page updates. `GenerationStatus` exposes a typed stage and
+progress; command text is formatted separately and is never parsed to decide whether the cache is ready.
+The lifecycle stages are waiting for runtime, reading, importing, generating, saving, ready, failed and
+cancelled. Pause is an independent control flag, so resuming does not need to reconstruct a stage from
+an old display string.
+
+The instance receives its IO executor, recipe capture, active-runtime lookup and cache path at construction.
+Tests can drive real commands and ticks while explicitly releasing queued IO, without reflection into
+private fields. Cancellation and final file replacement still share the same revision lock; publication
+still occurs only after successful saving.
+
+`AspectEvaluator` uses named phases and an explicit frame stack. Each `step` performs one continuation;
+extracting phase handlers does not make a large graph finish in a single tick. Slow third-party callbacks
+are not preemptible, so the lifecycle pauses instead of interrupting them unsafely.
 
 The evaluator preserves Thaumcraft's candidate priority, shared history, count scaling, truncation,
-container remainders and bonus aspects. It does not write Thaumcraft's global `objectTags`.
+container remainders and bonus aspects. Shared history remains alive across failed siblings and is not
+popped with the stack. It does not write Thaumcraft's global `objectTags`.
+
+`OrderedRecipeIndex` exposes typed crafting, crucible and infusion candidates. `AspectSnapshot` keeps its
+compact relation arrays and fixed 36-source page layout; the refactor does not replace them with a more
+allocation-heavy object graph. Research visibility uses an immutable wrapper/category list published by
+the plugin, rather than copying and retrying a shared mutable map.
 
 ## Source sets
 
@@ -63,8 +81,9 @@ container remainders and bonus aspects. It does not write Thaumcraft's global `o
 - `src/differential/java` — development-only probe comparing the evaluator with Thaumcraft's real
   `getObjectTags`. It is excluded from the normal installable JAR.
 
-## Legacy code
+## On-disk compatibility
 
-`cache/CacheFingerprint.java` and its test predate the fixed-cache decision. The production generation
-flow no longer calls it. It is retained in this revision for reference, not as an active invalidation
-mechanism; `docs/cache.md` describes the behaviour that actually ships.
+The inactive fingerprint engine and the unused legacy-format importer are no longer part of the production
+source set. Schema 2 still reads the old `fingerprint` and `recipes` fields so complete existing v2 files
+remain usable; those fields do not activate automatic invalidation. JSON parsing, validation, writing and
+atomic commit have separate methods in `SnapshotStore`.

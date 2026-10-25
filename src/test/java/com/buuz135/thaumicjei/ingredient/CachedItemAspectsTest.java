@@ -11,13 +11,9 @@ import org.apache.logging.log4j.LogManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
 import thaumcraft.api.aspects.Aspect;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -71,9 +67,14 @@ class CachedItemAspectsTest {
     void compoundOrderDoesNotChangeIdentityButTypesDo() {
         var a = new ItemStack(Items.APPLE);
         var b = a.copy();
-        var first = new NBTTagCompound(); first.setInteger("a", 1); first.setString("b", "two");
-        var second = new NBTTagCompound(); second.setString("b", "two"); second.setInteger("a", 1);
-        a.setTagCompound(first); b.setTagCompound(second);
+        var first = new NBTTagCompound();
+        first.setInteger("a", 1);
+        first.setString("b", "two");
+        var second = new NBTTagCompound();
+        second.setString("b", "two");
+        second.setInteger("a", 1);
+        a.setTagCompound(first);
+        b.setTagCompound(second);
         assertEquals(ItemIdentity.of(a), ItemIdentity.of(b));
         second.setShort("a", (short) 1);
         assertNotEquals(ItemIdentity.of(a), ItemIdentity.of(b));
@@ -98,7 +99,9 @@ class CachedItemAspectsTest {
         var builder = AspectSnapshot.builder();
         for (int i = 0; i < 80; i++) {
             var stack = new ItemStack(Items.APPLE);
-            var tag = new NBTTagCompound(); tag.setInteger("variant", i); stack.setTagCompound(tag);
+            var tag = new NBTTagCompound();
+            tag.setInteger("variant", i);
+            stack.setTagCompound(tag);
             builder.add(stack, Aspect.AIR, i + 1).add(stack, Aspect.AIR, i + 2).add(stack, Aspect.FIRE, 1);
         }
         var snapshot = builder.build();
@@ -109,33 +112,6 @@ class CachedItemAspectsTest {
         assertEquals(List.of(36, 36, 8), pages.stream().map(AspectSnapshot.Page::size).toList());
         assertEquals(81, snapshot.sourceStacks(pages.getFirst()).getFirst().getCount());
         assertEquals(1280, snapshot.stats().relationPayloadBytes());
-    }
-
-    @Test
-    void importingNeverPublishesPartialOrRejectedData(@TempDir Path directory) throws Exception {
-        var file = directory.resolve("cache.json");
-        assertInstanceOf(AspectCacheFile.Missing.class, AspectCacheFile.load(file));
-        for (var json : List.of("", "null", "[", "[] garbage")) {
-            Files.writeString(file, json);
-            assertInstanceOf(AspectCacheFile.Rejected.class, AspectCacheFile.load(file));
-            assertTrue(CachedItemAspects.get(new ItemStack(Items.APPLE)).isEmpty());
-        }
-        Files.writeString(file, "[]");
-        assertEquals(0, ((AspectCacheFile.Loaded) AspectCacheFile.load(file)).snapshot().stats().relations());
-    }
-
-    @Test
-    void legacyCountsAndDuplicateAmountsArePreserved(@TempDir Path directory) throws Exception {
-        var file = directory.resolve("cache.json");
-        var nbt = new ItemStack(Items.APPLE).serializeNBT();
-        nbt.setShort("Count", (short) 300);
-        var duplicate = nbt.copy(); duplicate.setShort("Count", (short) 400);
-        Files.writeString(file, new com.google.gson.Gson().toJson(List.of(
-                Map.of("aspect", Aspect.AIR.getTag(), "items", List.of(nbt.toString(), duplicate.toString())))));
-        var loaded = assertInstanceOf(AspectCacheFile.Loaded.class, AspectCacheFile.load(file));
-        assertEquals(1, loaded.snapshot().stats().relations());
-        assertEquals(400, loaded.snapshot().sourceStacks(loaded.snapshot().pages().getFirst()).getFirst().getCount());
-        assertEquals(0, CachedItemAspects.view().snapshot().stats().relations());
     }
 
     @Test

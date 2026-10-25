@@ -1,5 +1,5 @@
 /*
- * This file is part of Hot or Not.
+ * This file is part of ThaumicJEI.
  *
  * Copyright 2018, Buuz135
  *
@@ -39,23 +39,21 @@ import net.minecraftforge.fml.relauncher.Side;
 import thaumcraft.api.capabilities.ThaumcraftCapabilities;
 import thaumcraft.api.research.ResearchEvent;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.ConcurrentModificationException;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * Keeps JEI recipe visibility in sync with the client player's Thaumcraft knowledge.
  * <p>
  * A {@code ResearchEvent} may be fired from another thread (for example the integrated server thread),
- * so the handler never touches JEI directly: it records the key in a concurrent set and requests a
- * refresh. All player/JEI work happens on the client thread in the client tick handler, which collapses
+ * so the handler never touches JEI directly: it queues a player-bound notice and requests a refresh.
+ * All player/JEI work happens on the client thread in the client tick handler, which collapses
  * any number of events into one pass, so there is no per-event full scan. {@link #requestRefresh()} is
  * thread-safe and is also what the plugin/config call when the JEI runtime or the config changes.
  * <p>
@@ -71,12 +69,10 @@ public class ResearchManager {
     private static final int MAX_RECHECKS = 10;
 
     /** Research keys announced by events, waiting for Thaumcraft's knowledge to confirm them. */
-    private record ResearchNotice(java.util.UUID playerId, String key) {
-    }
+    private record ResearchNotice(UUID playerId, String key) {}
 
-    private static final java.util.concurrent.ConcurrentLinkedQueue<ResearchNotice> notices =
-            new java.util.concurrent.ConcurrentLinkedQueue<>();
-    private static final Set<String> pendingResearchKeys = ConcurrentHashMap.newKeySet();
+    private static final ConcurrentLinkedQueue<ResearchNotice> notices = new ConcurrentLinkedQueue<>();
+    private static final Set<String> pendingResearchKeys = new HashSet<>();
     /** Wrappers hidden by this manager; only touched from the client thread. */
     private static final Set<IRecipeWrapper> hiddenWrappers = Collections.newSetFromMap(new IdentityHashMap<IRecipeWrapper, Boolean>());
 
@@ -187,24 +183,15 @@ public class ResearchManager {
 
         // Keys announced by events act as early approval for that exact condition; Thaumcraft's own
         // knowledge is authoritative for everything else (including "a||b" and "research@stage").
-        Set<String> approvedKeys = pendingResearchKeys.isEmpty()
-                ? Collections.<String>emptySet()
-                : ConcurrentHashMap.newKeySet();
-        if (!pendingResearchKeys.isEmpty()) approvedKeys.addAll(pendingResearchKeys);
+        Set<String> approvedKeys = Set.copyOf(pendingResearchKeys);
 
-        List<Map.Entry<IRecipeWrapper, String>> entries = snapshotRecipes();
-        if (entries.isEmpty() && !ThaumcraftJEIPlugin.recipes.isEmpty()) {
-            // The recipe map was being rebuilt; try again later.
-            defer(RETRY_DELAY_TICKS);
-            return;
-        }
         refreshRequested.set(false);
-        for (Map.Entry<IRecipeWrapper, String> entry : entries) {
-            IRecipeWrapper wrapper = entry.getKey();
-            String categoryUid = entry.getValue();
-            if (wrapper == null || categoryUid == null || !(wrapper instanceof IHasResearch)) continue;
+        for (var entry : ThaumcraftJEIPlugin.researchRecipes()) {
+            IRecipeWrapper wrapper = entry.wrapper();
+            String categoryUid = entry.categoryUid();
+            if (wrapper == null || categoryUid == null || !(wrapper instanceof IHasResearch researched)) continue;
 
-            boolean known = ResearchUtils.knowsAllResearch(player, approvedKeys, ((IHasResearch) wrapper).getResearch());
+            boolean known = ResearchUtils.knowsAllResearch(player, approvedKeys, researched.getResearch());
             boolean hiddenByManager = hiddenWrappers.contains(wrapper);
             boolean currentlyHidden = hiddenByManager || initialHidesAreActive;
             if (!known) {
@@ -240,9 +227,9 @@ public class ResearchManager {
     /** Config is off: undo the plugin's initial hides and everything this manager hid. */
     private static void releaseHidden(IJeiRuntime runtime) {
         if (!initialHidesAreActive && hiddenWrappers.isEmpty()) return;
-        for (Map.Entry<IRecipeWrapper, String> entry : snapshotRecipes()) {
-            IRecipeWrapper wrapper = entry.getKey();
-            String categoryUid = entry.getValue();
+        for (var entry : ThaumcraftJEIPlugin.researchRecipes()) {
+            IRecipeWrapper wrapper = entry.wrapper();
+            String categoryUid = entry.categoryUid();
             if (wrapper == null || categoryUid == null) continue;
             if (initialHidesAreActive || hiddenWrappers.contains(wrapper)) {
                 runtime.getRecipeRegistry().unhideRecipe(wrapper, categoryUid);
@@ -250,21 +237,6 @@ public class ResearchManager {
         }
         hiddenWrappers.clear();
         initialHidesAreActive = false;
-    }
-
-    /**
-     * {@code ThaumcraftJEIPlugin.recipes} is a plain HashMap which the plugin clears and refills when the
-     * JEI runtime becomes available, so copy defensively and retry once if it is mutated concurrently.
-     */
-    private static List<Map.Entry<IRecipeWrapper, String>> snapshotRecipes() {
-        for (int attempt = 0; attempt < 2; attempt++) {
-            try {
-                return new ArrayList<>(ThaumcraftJEIPlugin.recipes.entrySet());
-            } catch (ConcurrentModificationException ignored) {
-                // retry once
-            }
-        }
-        return Collections.emptyList();
     }
 
     private static void defer(int ticks) {

@@ -12,8 +12,9 @@ JAVA_HOME=/path/to/java25 ./gradlew \
 Use `--rerun-tasks` when you want execution rather than a Gradle `FROM-CACHE` result. Reports are
 written to `build/reports/tests/test/` and machine-readable results to `build/test-results/test/`.
 
-The current suite has **44 tests**. It is organised by subsystem rather than placed in one large test
-class:
+The current readability branch has **58 tests**. The published beta.2 release had 44; this branch removes
+four tests of inactive legacy code and adds 18 lifecycle, persistence, status and evaluator checks. Tests
+are organised by subsystem:
 
 | Area | Test classes | What they cover |
 |---|---|---|
@@ -23,11 +24,15 @@ class:
 | Lookup | `CachedItemAspectsTest` | Exact item/NBT lookup, empty results, reload generations and snapshot visibility. |
 | Recipe index | `OrderedRecipeIndexTest` | Stable ordering, output identity and metadata handling. |
 | Persistence | `SnapshotStoreTest` | Round trips, malformed/unknown documents, fixed-cache reads and atomic-write cancellation. |
-| Lifecycle | `GenerationControlTest`, `CacheCommandTest` | Pause/cancel/rebuild control, no evaluator on fixed import, and save-before-publish. |
+| Lifecycle | `GenerationControlTest`, `CacheCommandTest`, `GenerationStatusTest` | Typed stages, controls, unchanged-cache import, first generation, source pages, runtime changes and save/cancel/failure publication ordering. |
 | Research | `ResearchUtilsTest` | Research-key handling used by the client refresh code. |
-| Legacy reference | `CacheFingerprintTest` | The old fingerprint experiment only; it is not the active invalidation mechanism. |
 
 Unit tests exercise the derivation and lifecycle logic without claiming to replace an in-game run.
+`QueuedExecutor` makes IO completion explicit, and lifecycle tests use the normal prepare/attach/tick/control
+methods rather than setting private fields. `ThaumcraftState` backs up and restores global tags and TC
+recipes and removes test-added crafting recipes, so sampled differential cases do not leak registrations
+into later tests. Evaluator tests include a 110-link chain and 24 randomized crafting cases, each checked
+against the real TC method across three continuation slice sizes.
 
 ## Differential checks
 
@@ -42,7 +47,7 @@ and artifact-separation requirements.
 
 ## Real-client validation
 
-The release candidate was exercised in an independent copy of a 118-mod 1.12.2 pack with Cleanroom
+The published beta.2 release was exercised in an independent copy of a 118-mod 1.12.2 pack with Cleanroom
 0.6.13-alpha, Java 25 and HEI 4.32.0. The recorded run contained 18,813 deduplicated items, 46 aspects
 and 22,702 source relations.
 
@@ -56,7 +61,13 @@ Verified there:
 - representative arcane, crucible and infusion pages remained visible after unlocking all research in
   the test world.
 
-The screenshots in `docs/images/` come from those runs and are cropped to the game window.
+The screenshots in `docs/images/` come from those published-release runs and are cropped to the game window.
+
+The readability candidate was separately smoke-tested in the same isolated client. It loaded all 18,813
+items and 22,702 relations, published 650 source pages, and reached ready with zero evaluator steps.
+The cache hash and modification time were unchanged, and the previously installed test JAR was restored
+afterward. This startup smoke test did not repeat the complete world-entry/R/U/research UI acceptance run;
+the older screenshots and sampled pack-level differential report are not represented as fresh evidence.
 
 ## Not covered
 

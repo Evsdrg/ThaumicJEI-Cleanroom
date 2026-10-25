@@ -55,10 +55,10 @@ Not supported: Cleanroom 0.7+, Java 8 and the original ForgeGradle/Java 8 runtim
 Download the release build:
 
 ```text
-https://github.com/Evsdrg/ThaumicJEI-Cleanroom/releases/tag/1.12.2-2.0.0-beta.2
+https://github.com/Evsdrg/ThaumicJEI-Cleanroom/releases/tag/1.12.2-2.0.0-beta.3
 ```
 
-The asset to install is `ThaumicJEI-Java25-1.12.2-2.0.0-beta.2.jar`. `SHA256SUMS` in the same
+The asset to install is `ThaumicJEI-Java25-1.12.2-2.0.0-beta.3.jar`. `SHA256SUMS` in the same
 release lists the expected checksums.
 
 1. Exit the game and back up your existing ThaumicJEI JAR and cache.
@@ -75,7 +75,7 @@ After pack or recipe changes, use `/thaumicjei rebuild` when you want to regener
 - [Architecture](docs/architecture.md) — packages, lookup/generation paths and source sets.
 - [Fixed cache](docs/cache.md) — lifecycle, commands, configuration and exact-NBT behaviour.
 - [Building](docs/building.md) — toolchain, artifacts and differential-variant precautions.
-- [Testing](docs/testing.md) — 44 unit tests, differential checks and validation limits.
+- [Testing](docs/testing.md) — 58 tests on the readability branch, differential checks and validation limits.
 - [Changelog](CHANGELOG.md) — this refactor's release notes.
 - [Documentation index](docs/README.md) — including screenshot and asset-path conventions.
 
@@ -91,13 +91,14 @@ JDK 8 is used only by legacy MCP tooling; the mod itself is compiled for Java 25
 
 ## Validation status
 
-Verified on an independent 118-mod pack with 18,813 deduplicated items: complete generation with zero
-skips, warm cache loading without evaluator work, R/U lookups, source pages, safe rebuild/cancel and
-representative Thaumcraft recipe categories after research unlock.
+The beta.3 suite has 58 tests. The readability candidate was started in an isolated copy of the 118-mod
+pack at 1280×720 and loaded the existing fixed cache: 18,813 items, 22,702 relations and 650 source pages;
+the evaluator remained idle at `steps=0`. The real-client startup/warm-load smoke test passed, but this
+round did not obtain sufficiently targeted evidence for in-world R/U lookups. Do not treat beta.2
+screenshots as fresh beta.3 validation. See [Testing](docs/testing.md) for scope and limitations.
 
-This is not a claim of exhaustive coverage or GPU performance. The detailed list of tested and untested
-behaviour is in [Testing](docs/testing.md). Multiplayer is out of scope: the mod is client-side only
-and has no custom network protocol.
+This is not a claim of exhaustive coverage or GPU performance. Multiplayer is out of scope: the mod is
+client-side only and has no custom network protocol.
 
 ## Contributing and license
 
